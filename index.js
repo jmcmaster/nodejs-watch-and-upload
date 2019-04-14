@@ -1,10 +1,11 @@
 require('dotenv').config();
-var queue = require("async/queue");
+const queue = require("async/queue");
 const chokidar = require('chokidar');
 const fs = require('fs');
+const uploader = require('./uploader');
 
 let watcher;
-const imageDirectory = `${process.env.IMAGE_DIRECTORY}/`
+const imageDirectory = `${process.env.LOCAL_IMAGE_DIRECTORY || 'images'}/`
 const numberOfWorkers = 2;
 
 const deleteFile = path => {
@@ -16,31 +17,30 @@ const deleteFile = path => {
     });
 }
 
-const list = queue(function(task, callback) {  
-    console.log('Uploading file...');          
-    setTimeout(() => {
-        callback();            
-    }, 5000);
-}, numberOfWorkers);
+const uploadFile = async (task, callback) => {
+    await uploader.uploadFile(task.path);
+    callback();
+}
+
+const onWatcherAdd = fullPath => {
+    list.push({path: fullPath}, function(err) {
+        deleteFile(fullPath);
+    });
+}
+
+const list = queue(uploadFile, numberOfWorkers);
 
 list.drain = function() {
     console.log('Done!\nAll items have been processed');
 };
 
-const watcherOptions = { 
-    cwd: '.',
-    ignored: /(^|[\/\\])\../,       
-    persistent: true
-};
-
-const onWatcherAdd = path => {
-    list.push({path}, function(err) {                
-        console.log('Uploaded ' + path);
-        deleteFile(path);
-    });
-}
-
 const start = () => {
+    const watcherOptions = {
+        cwd: '.',
+        ignored: /(^|[\/\\])\../,
+        persistent: true
+    };
+
     watcher = chokidar.watch(imageDirectory, watcherOptions);
 
     watcher
