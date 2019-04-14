@@ -2,8 +2,10 @@ const AWS = require('aws-sdk');
 const fs = require('fs');
 
 const uploadFile = (filePath) => {
+    const fullPath = __dirname + `/${process.env.LOCAL_IMAGE_DIRECTORY || 'images'}/` + filePath;
+
     return new Promise((resolve, reject) => {
-        fs.readFile(filePath, (err, data) => {
+        fs.readFile(fullPath, (err, data) => {
             if (err) {
                 console.error(err, err.stack);
                 reject();
@@ -12,7 +14,7 @@ const uploadFile = (filePath) => {
             console.log('Uploading file...');
 
             const base64data = new Buffer.from(data, 'binary');
-                        
+
             const objectParams = {
                 Bucket: process.env.S3_BUCKET_NAME,
                 Key: filePath,
